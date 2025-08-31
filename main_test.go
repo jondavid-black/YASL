@@ -1,11 +1,47 @@
 package main
 
 import (
-	"github.com/jondavid-black/YASL/core"
 	"os"
 	"os/exec"
 	"testing"
 )
+
+func TestProcessYASL_AST_Success(t *testing.T) {
+	yamlContent := "foo: bar\nbaz: [1, 2, 3]"
+	tmpFile, err := os.CreateTemp("", "test-*.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create temp YAML file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	_, err = tmpFile.WriteString(yamlContent)
+	tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
+	yaslFile, err := os.CreateTemp("", "test-*.yasl")
+	if err != nil {
+		t.Fatalf("Failed to create temp YASL file: %v", err)
+	}
+	defer os.Remove(yaslFile.Name())
+	yaslFile.Close()
+	hasError, _ := processYASL(tmpFile.Name(), yaslFile.Name(), false, false, "text", true, "", "", false)
+	if hasError {
+		t.Fatalf("Expected no errors, got error")
+	}
+}
+
+func TestProcessYASL_AST_Error(t *testing.T) {
+	yaslFile, err := os.CreateTemp("", "test-*.yasl")
+	if err != nil {
+		t.Fatalf("Failed to create temp YASL file: %v", err)
+	}
+	defer os.Remove(yaslFile.Name())
+	yaslFile.Close()
+	hasError, _ := processYASL("", yaslFile.Name(), false, false, "text", true, "", "", false)
+	if !hasError {
+		t.Fatalf("Expected error for empty YAML input")
+	}
+}
 
 func TestYASL_CLI_PositionalArgs(t *testing.T) {
 	yamlFile, err := os.CreateTemp("", "test-*.yaml")
@@ -13,7 +49,11 @@ func TestYASL_CLI_PositionalArgs(t *testing.T) {
 		t.Fatalf("Failed to create temp YAML file: %v", err)
 	}
 	defer os.Remove(yamlFile.Name())
+	_, err = yamlFile.WriteString("foo: bar\n")
 	yamlFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
 	yaslFile, err := os.CreateTemp("", "test-*.yasl")
 	if err != nil {
 		t.Fatalf("Failed to create temp YASL file: %v", err)
@@ -21,15 +61,15 @@ func TestYASL_CLI_PositionalArgs(t *testing.T) {
 	defer os.Remove(yaslFile.Name())
 	yaslFile.Close()
 
-	yamlPath, err := core.SanitizePath(yamlFile.Name())
+	yamlPath, err := SanitizePath(yamlFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yaml: %v", err)
 	}
-	yaslPath, err := core.SanitizePath(yaslFile.Name())
+	yaslPath, err := SanitizePath(yaslFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yasl: %v", err)
 	}
-	cmd := exec.Command("./yasl", yamlPath, yaslPath) // #nosec
+	cmd := exec.Command("./yasl", "--verbose", yamlPath, yaslPath) // #nosec
 	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -46,7 +86,11 @@ func TestYASL_CLI_Flags(t *testing.T) {
 		t.Fatalf("Failed to create temp YAML file: %v", err)
 	}
 	defer os.Remove(yamlFile.Name())
+	_, err = yamlFile.WriteString("foo: bar\n")
 	yamlFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
 	yaslFile, err := os.CreateTemp("", "test-*.yasl")
 	if err != nil {
 		t.Fatalf("Failed to create temp YASL file: %v", err)
@@ -54,15 +98,15 @@ func TestYASL_CLI_Flags(t *testing.T) {
 	defer os.Remove(yaslFile.Name())
 	yaslFile.Close()
 
-	yamlPath, err := core.SanitizePath(yamlFile.Name())
+	yamlPath, err := SanitizePath(yamlFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yaml: %v", err)
 	}
-	yaslPath, err := core.SanitizePath(yaslFile.Name())
+	yaslPath, err := SanitizePath(yaslFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yasl: %v", err)
 	}
-	cmd := exec.Command("./yasl", "-yaml", yamlPath, "-yasl", yaslPath) // #nosec
+	cmd := exec.Command("./yasl", "--verbose", "-yaml", yamlPath, "-yasl", yaslPath) // #nosec
 	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -79,7 +123,11 @@ func TestYASL_CLI_OutputType_Text(t *testing.T) {
 		t.Fatalf("Failed to create temp YAML file: %v", err)
 	}
 	defer os.Remove(yamlFile.Name())
+	_, err = yamlFile.WriteString("foo: bar\n")
 	yamlFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
 	yaslFile, err := os.CreateTemp("", "test-*.yasl")
 	if err != nil {
 		t.Fatalf("Failed to create temp YASL file: %v", err)
@@ -87,15 +135,15 @@ func TestYASL_CLI_OutputType_Text(t *testing.T) {
 	defer os.Remove(yaslFile.Name())
 	yaslFile.Close()
 
-	yamlPath, err := core.SanitizePath(yamlFile.Name())
+	yamlPath, err := SanitizePath(yamlFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yaml: %v", err)
 	}
-	yaslPath, err := core.SanitizePath(yaslFile.Name())
+	yaslPath, err := SanitizePath(yaslFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yasl: %v", err)
 	}
-	cmd := exec.Command("./yasl", yamlPath, yaslPath, "--output-type", "text")
+	cmd := exec.Command("./yasl", "--verbose", yamlPath, yaslPath, "--output-type", "text")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Expected success, got error: %v, output: %s", err, output)
@@ -111,7 +159,11 @@ func TestYASL_CLI_OutputType_JSON(t *testing.T) {
 		t.Fatalf("Failed to create temp YAML file: %v", err)
 	}
 	defer os.Remove(yamlFile.Name())
+	_, err = yamlFile.WriteString("foo: bar\n")
 	yamlFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
 	yaslFile, err := os.CreateTemp("", "test-*.yasl")
 	if err != nil {
 		t.Fatalf("Failed to create temp YASL file: %v", err)
@@ -119,15 +171,15 @@ func TestYASL_CLI_OutputType_JSON(t *testing.T) {
 	defer os.Remove(yaslFile.Name())
 	yaslFile.Close()
 
-	yamlPath, err := core.SanitizePath(yamlFile.Name())
+	yamlPath, err := SanitizePath(yamlFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yaml: %v", err)
 	}
-	yaslPath, err := core.SanitizePath(yaslFile.Name())
+	yaslPath, err := SanitizePath(yaslFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yasl: %v", err)
 	}
-	cmd := exec.Command("./yasl", "--output-type", "json", yamlPath, yaslPath)
+	cmd := exec.Command("./yasl", "--output", "json", yamlPath, yaslPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Expected success, got error: %v, output: %s", err, output)
@@ -143,7 +195,11 @@ func TestYASL_CLI_OutputType_YAML(t *testing.T) {
 		t.Fatalf("Failed to create temp YAML file: %v", err)
 	}
 	defer os.Remove(yamlFile.Name())
+	_, err = yamlFile.WriteString("foo: bar\n")
 	yamlFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to write YAML: %v", err)
+	}
 	yaslFile, err := os.CreateTemp("", "test-*.yasl")
 	if err != nil {
 		t.Fatalf("Failed to create temp YASL file: %v", err)
@@ -151,15 +207,15 @@ func TestYASL_CLI_OutputType_YAML(t *testing.T) {
 	defer os.Remove(yaslFile.Name())
 	yaslFile.Close()
 
-	yamlPath, err := core.SanitizePath(yamlFile.Name())
+	yamlPath, err := SanitizePath(yamlFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yaml: %v", err)
 	}
-	yaslPath, err := core.SanitizePath(yaslFile.Name())
+	yaslPath, err := SanitizePath(yaslFile.Name())
 	if err != nil {
 		t.Fatalf("SanitizePath failed for yasl: %v", err)
 	}
-	cmd := exec.Command("./yasl", "--output-type", "yaml", yamlPath, yaslPath)
+	cmd := exec.Command("./yasl", "--output", "yaml", yamlPath, yaslPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Expected success, got error: %v, output: %s", err, output)
@@ -198,4 +254,29 @@ func stringIndex(s, substr string) int {
 		}
 	}
 	return -1
+}
+
+func TestSanitizePath_Valid(t *testing.T) {
+	valid := "file.yaml"
+	result, err := SanitizePath(valid)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if result != valid {
+		t.Errorf("Expected %s, got %s", valid, result)
+	}
+}
+
+func TestSanitizePath_Invalid(t *testing.T) {
+	_, err := SanitizePath("")
+	if err == nil {
+		t.Errorf("Expected error for empty path, got nil")
+	}
+}
+
+func TestSanitizePath_DashPrefix(t *testing.T) {
+	_, err := SanitizePath("-badfile.yaml")
+	if err == nil {
+		t.Errorf("Expected error for dash-prefixed path, got nil")
+	}
 }
